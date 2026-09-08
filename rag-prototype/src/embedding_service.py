@@ -1,45 +1,41 @@
-from pathlib import Path
-
-import numpy as np
 from sentence_transformers import SentenceTransformer
 
 
 class EmbeddingService:
-    def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
-        print(f"Loading embedding model: {model_name}")
+    """
+    Generates semantic embeddings using a pretrained
+    Sentence Transformer model.
+    """
 
-        self.model = SentenceTransformer(model_name)
+    MODEL_NAME = "all-MiniLM-L6-v2"
 
-    def encode(self, texts: list[str]) -> np.ndarray:
+    def __init__(self):
+        print(
+            f"Loading embedding model: {self.MODEL_NAME}"
+        )
+
+        self.model = SentenceTransformer(
+            self.MODEL_NAME
+        )
+
+        print("Embedding model loaded.")
+
+    def encode(
+        self,
+        texts: list[str],
+    ):
         """
-        Convert text documents into numerical embeddings.
+        Convert text into dense vector embeddings.
         """
+
+        if not texts:
+            return []
 
         embeddings = self.model.encode(
             texts,
-            show_progress_bar=True,
             convert_to_numpy=True,
             normalize_embeddings=True,
+            show_progress_bar=True,
         )
 
-        return embeddings.astype("float32")
-
-    def save_embeddings(
-        self,
-        embeddings: np.ndarray,
-        path: str | Path,
-    ) -> None:
-        """
-        Save embeddings to a NumPy .npy file.
-        """
-
-        path = Path(path)
-
-        path.parent.mkdir(
-            parents=True,
-            exist_ok=True,
-        )
-
-        np.save(path, embeddings)
-
-        print(f"Saved embeddings to: {path}")
+        return embeddings

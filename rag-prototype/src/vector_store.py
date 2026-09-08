@@ -5,43 +5,79 @@ import numpy as np
 
 
 class VectorStore:
+    """
+    FAISS vector store for AlgoForge problem embeddings.
+    """
+
     def __init__(self, dimension: int):
-        """
-        Create a FAISS vector store using inner product similarity.
+        self.dimension = dimension
 
-        Since our embeddings are normalized, inner product
-        is equivalent to cosine similarity.
-        """
+        # Inner Product + normalized embeddings
+        # = cosine similarity
+        self.index = faiss.IndexFlatIP(
+            dimension
+        )
 
-        self.index = faiss.IndexFlatIP(dimension)
-
-    def add(self, embeddings: np.ndarray) -> None:
+    def add(
+        self,
+        embeddings: np.ndarray,
+    ) -> None:
         """
         Add embeddings to the FAISS index.
         """
 
-        if embeddings.dtype != np.float32:
-            embeddings = embeddings.astype("float32")
+        if embeddings.ndim != 2:
+            raise ValueError(
+                "Embeddings must be a 2D numpy array."
+            )
 
-        self.index.add(embeddings)
+        if embeddings.shape[1] != self.dimension:
+            raise ValueError(
+                f"Expected embedding dimension "
+                f"{self.dimension}, "
+                f"got {embeddings.shape[1]}"
+            )
 
-        print(f"Added {len(embeddings)} vectors to FAISS.")
+        embeddings = np.asarray(
+            embeddings,
+            dtype=np.float32,
+        )
+
+        self.index.add(
+            embeddings
+        )
 
     def search(
         self,
         query_embedding: np.ndarray,
         top_k: int = 5,
-    ) -> tuple[np.ndarray, np.ndarray]:
+    ):
         """
-        Search for the most similar vectors.
-
-        Returns:
-            scores
-            indices
+        Search the vector store for the most similar
+        embeddings.
         """
 
-        if query_embedding.dtype != np.float32:
-            query_embedding = query_embedding.astype("float32")
+        query_embedding = np.asarray(
+            query_embedding,
+            dtype=np.float32,
+        )
+
+        if query_embedding.ndim == 1:
+            query_embedding = query_embedding.reshape(
+                1, -1
+            )
+
+        if query_embedding.shape[1] != self.dimension:
+            raise ValueError(
+                f"Expected query dimension "
+                f"{self.dimension}, "
+                f"got {query_embedding.shape[1]}"
+            )
+
+        top_k = min(
+            top_k,
+            self.index.ntotal,
+        )
 
         scores, indices = self.index.search(
             query_embedding,
@@ -50,9 +86,20 @@ class VectorStore:
 
         return scores, indices
 
-    def save(self, path: str | Path) -> None:
+    @property
+    def size(self) -> int:
         """
-        Save the FAISS index to disk.
+        Number of vectors stored.
+        """
+
+        return self.index.ntotal
+
+    def save(
+        self,
+        path: str | Path,
+    ) -> None:
+        """
+        Save FAISS index to disk.
         """
 
         path = Path(path)
@@ -67,25 +114,34 @@ class VectorStore:
             str(path),
         )
 
-        print(f"Saved FAISS index to: {path}")
+        print(
+            f"Saved FAISS index to: {path}"
+        )
 
-    def load(self, path: str | Path) -> None:
+    @classmethod
+    def load(
+        cls,
+        path: str | Path,
+    ) -> "VectorStore":
         """
-        Load an existing FAISS index from disk.
+        Load an existing FAISS index.
         """
 
         path = Path(path)
 
-        self.index = faiss.read_index(
-            str(path),
+        if not path.exists():
+            raise FileNotFoundError(
+                f"FAISS index not found: {path}"
+            )
+
+        index = faiss.read_index(
+            str(path)
         )
 
-        print(f"Loaded FAISS index from: {path}")
+        store = cls(
+            index.d
+        )
 
-    @property
-    def size(self) -> int:
-        """
-        Number of vectors currently stored.
-        """
+        store.index = index
 
-        return self.index.ntotal
+        return store
