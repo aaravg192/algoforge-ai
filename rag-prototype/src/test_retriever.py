@@ -23,6 +23,71 @@ INDEX_PATH = (
 )
 
 
+def display_results(
+    results,
+    test_name,
+    query,
+):
+    """
+    Display retrieved problems in a consistent format.
+    """
+
+    print(
+        f"\n=== {test_name} ==="
+    )
+
+    print(
+        f"Query: {query}"
+    )
+
+    if not results:
+        print(
+            "\nNo results found."
+        )
+        return
+
+    for rank, result in enumerate(
+        results,
+        start=1,
+    ):
+
+        document = result["document"]
+
+        text = document["text"]
+
+        metadata = document["metadata"]
+
+        print(
+            f"\n{rank}. "
+            f"{text['problem']}"
+        )
+
+        print(
+            f"   Difficulty: "
+            f"{text['difficulty']}"
+        )
+
+        print(
+            f"   Topics: "
+            f"{', '.join(text['topics'])}"
+        )
+
+        print(
+            f"   Paid: "
+            f"{metadata['paid_only']}"
+        )
+
+        print(
+            f"   Similarity: "
+            f"{result['score']:.4f}"
+        )
+
+        print(
+            f"   ID: "
+            f"{metadata.get('frontend_question_id')}"
+        )
+
+
 def main():
 
     print(
@@ -72,9 +137,10 @@ def main():
         documents=documents,
     )
 
-    # --------------------------------------------------------
-    # Test query
-    # --------------------------------------------------------
+    # ========================================================
+    # TEST 1
+    # Pure semantic retrieval
+    # ========================================================
 
     query = (
         "I want problems involving "
@@ -86,59 +152,79 @@ def main():
         top_k=5,
     )
 
-    # --------------------------------------------------------
-    # Display results
-    # --------------------------------------------------------
-
-    print(
-        "\n=== RETRIEVAL RESULTS ==="
+    display_results(
+        results=results,
+        test_name="TEST 1: SEMANTIC RETRIEVAL",
+        query=query,
     )
 
-    print(
-        f"Query: {query}"
+    # ========================================================
+    # TEST 2
+    # Semantic retrieval + difficulty filter
+    # ========================================================
+
+    query = (
+        "I want problems involving "
+        "hash maps"
     )
 
-    for rank, result in enumerate(
-        results,
-        start=1,
-    ):
+    results = retriever.retrieve(
+        query,
+        top_k=5,
+        difficulty="Easy",
+    )
 
-        document = result[
-            "document"
-        ]
+    display_results(
+        results=results,
+        test_name="TEST 2: EASY HASH MAP PROBLEMS",
+        query=query,
+    )
 
-        text = document[
-            "text"
-        ]
+    # ========================================================
+    # TEST 3
+    # Semantic retrieval + topic filter
+    # ========================================================
 
-        metadata = document[
-            "metadata"
-        ]
+    query = (
+        "I want problems involving "
+        "hash maps"
+    )
 
-        print(
-            f"\n{rank}. "
-            f"{text['problem']}"
-        )
+    results = retriever.retrieve(
+        query,
+        top_k=5,
+        topics=["Hash Table"],
+    )
 
-        print(
-            f"   Difficulty: "
-            f"{text['difficulty']}"
-        )
+    display_results(
+        results=results,
+        test_name="TEST 3: HASH TABLE PROBLEMS",
+        query=query,
+    )
 
-        print(
-            f"   Topics: "
-            f"{', '.join(text['topics'])}"
-        )
+    # ========================================================
+    # TEST 4
+    # Semantic retrieval + multiple filters
+    # ========================================================
 
-        print(
-            f"   Similarity: "
-            f"{result['score']:.4f}"
-        )
+    query = (
+        "I want problems involving "
+        "hash maps"
+    )
 
-        print(
-            f"   ID: "
-            f"{metadata.get('frontend_question_id')}"
-        )
+    results = retriever.retrieve(
+        query,
+        top_k=5,
+        difficulty="Easy",
+        topics=["Hash Table"],
+        paid_only=False,
+    )
+
+    display_results(
+        results=results,
+        test_name="TEST 4: HYBRID RETRIEVAL",
+        query=query,
+    )
 
 
 if __name__ == "__main__":
